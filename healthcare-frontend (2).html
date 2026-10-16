@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Healthcare Management</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #172033; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #173b66; color: white; padding: 22px max(20px, calc((100% - 1100px)/2)); }
+    header h1 { margin: 0 0 6px; font-size: 25px; }
+    header p { margin: 0; color: #d8e6f7; }
+    main { max-width: 1100px; margin: 24px auto; padding: 0 16px 40px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card { background: white; border: 1px solid #e0e7f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px #173b660d; }
+    h2 { font-size: 18px; margin: 0 0 16px; }
+    label { display: block; font-size: 13px; font-weight: 700; margin: 11px 0 5px; }
+    input, select, textarea { width: 100%; padding: 10px 11px; border: 1px solid #cbd5e1; border-radius: 7px; font: inherit; background: #fff; }
+    textarea { resize: vertical; min-height: 65px; }
+    button { border: 0; border-radius: 7px; padding: 10px 14px; background: #1769aa; color: white; font-weight: 700; cursor: pointer; margin-top: 12px; }
+    button:hover { filter: brightness(.94); }
+    button.secondary { background: #e8eef6; color: #19334f; }
+    button.danger { background: #b42318; margin: 0; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .row > * { flex: 1; }
+    .status { margin: 14px 0; padding: 11px 13px; border-radius: 8px; display: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .status.ok { display: block; color: #17603a; background: #e9f8ef; border: 1px solid #b7e4c7; }
+    .status.err { display: block; color: #8c1d18; background: #fff0ef; border: 1px solid #f1c0bc; }
+    .muted { color: #64748b; font-size: 13px; }
+    .hidden { display: none !important; }
+    .patient-list { display: grid; gap: 10px; }
+    .patient { border: 1px solid #e1e8f0; border-radius: 9px; padding: 13px; display: flex; gap: 12px; justify-content: space-between; align-items: center; }
+    .patient strong { display: block; margin-bottom: 5px; }
+    .patient small { display: block; color: #64748b; line-height: 1.5; overflow-wrap: anywhere; }
+    .patient button { flex: 0 0 auto; }
+    .topbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .token-note { font-size: 12px; color: #64748b; overflow-wrap: anywhere; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } main { margin-top: 16px; } .patient { align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Healthcare Management</h1>
+    <p>Simple patient management frontend · HTML, CSS and JavaScript</p>
+  </header>
+
+  <main>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <section id="authSection" class="grid">
+      <div class="card">
+        <h2>Create an account</h2>
+        <form id="registerForm">
+          <label for="regName">Name</label>
+          <input id="regName" name="name" required maxlength="100" autocomplete="name">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" name="email" type="email" required autocomplete="email">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" name="password" type="password" required minlength="8" autocomplete="new-password">
+          <button type="submit">Register</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Login</h2>
+        <form id="loginForm">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" name="email" type="email" required autocomplete="email">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" name="password" type="password" required autocomplete="current-password">
+          <button type="submit">Login</button>
+          <p class="muted">After login, your JWT is used for protected API requests.</p>
+        </form>
+      </div>
+    </section>
+
+    <section id="appSection" class="hidden">
+      <div class="topbar">
+        <div>
+          <strong id="welcome">Signed in</strong>
+          <div class="token-note">Requests use your login token. Patients shown here belong to your account.</div>
+        </div>
+        <div class="row" style="flex:0 0 auto">
+          <button id="refreshBtn" class="secondary" type="button">Refresh patients</button>
+          <button id="logoutBtn" class="secondary" type="button">Logout</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h2 id="patientFormTitle">Add a patient</h2>
+          <form id="patientForm">
+            <label for="patientName">Full name</label>
+            <input id="patientName" name="name" required maxlength="100">
+            <div class="row">
+              <div>
+                <label for="patientAge">Age</label>
+                <input id="patientAge" name="age" type="number" min="0" max="150" required>
+              </div>
+              <div>
+                <label for="patientGender">Gender</label>
+                <select id="patientGender" name="gender" required>
+                  <option value="">Select gender</option>
+                  <option>Male</option><option>Female</option><option>Other</option>
+                </select>
+              </div>
+            </div>
+            <label for="patientAddress">Address</label>
+            <textarea id="patientAddress" name="address" required></textarea>
+            <div class="row">
+              <button id="patientSubmitBtn" type="submit">Create patient</button>
+              <button id="cancelEditBtn" class="secondary hidden" type="button">Cancel edit</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="topbar" style="margin-bottom:12px">
+            <h2 style="margin:0">Your patients</h2>
+            <span id="patientCount" class="muted">0 patients</span>
+          </div>
+          <div id="patientList" class="patient-list">
+            <p class="muted">Log in to load your patients.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:18px">
+        <div class="card">
+          <h2>Add a doctor</h2>
+          <form id="doctorForm">
+            <label for="doctorName">Full name</label>
+            <input id="doctorName" name="name" required maxlength="100">
+            <label for="doctorSpecialization">Specialization</label>
+            <input id="doctorSpecialization" name="specialization" required maxlength="100" placeholder="e.g. Cardiology">
+            <label for="doctorEmail">Email</label>
+            <input id="doctorEmail" name="email" type="email" required maxlength="255">
+            <label for="doctorPhone">Phone</label>
+            <input id="doctorPhone" name="phone" required maxlength="20" inputmode="tel">
+            <button type="submit">Add doctor</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="topbar" style="margin-bottom:12px">
+            <h2 style="margin:0">Doctors</h2>
+            <button id="refreshDoctorsBtn" class="secondary" type="button" style="margin:0;flex:0 0 auto">Refresh</button>
+          </div>
+          <div id="doctorList" class="patient-list">
+            <p class="muted">Log in to load doctors.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:18px">
+        <div class="card">
+          <h2>Assign doctor to patient</h2>
+          <form id="mappingForm">
+            <label for="mappingPatient">Patient</label>
+            <select id="mappingPatient" name="patientId" required>
+              <option value="">Load patients first</option>
+            </select>
+            <label for="mappingDoctor">Doctor</label>
+            <select id="mappingDoctor" name="doctorId" required>
+              <option value="">Load doctors first</option>
+            </select>
+            <button type="submit">Assign doctor</button>
+          </form>
+          <p class="muted">This creates a patient-doctor assignment (mapping), not a date/time appointment.</p>
+        </div>
+        <div class="card">
+          <div class="topbar" style="margin-bottom:12px">
+            <h2 style="margin:0">Patient-doctor assignments</h2>
+            <button id="refreshMappingsBtn" class="secondary" type="button" style="margin:0;flex:0 0 auto">Refresh</button>
+          </div>
+          <div id="mappingList" class="patient-list">
+            <p class="muted">Log in to view assignments.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p class="muted" style="margin-top:20px">API base URL: <code id="apiLabel"></code>. Update <code>API_BASE</code> in this file if your backend uses another URL.</p>
+  </main>
+
+  <script>
+    // Change this when your backend URL/port differs.
+    const API_BASE = "http://localhost:5000";
+    const TOKEN_KEY = "healthcare_jwt";
+    const USER_KEY = "healthcare_user";
+
+    const statusBox = document.getElementById("status");
+    const authSection = document.getElementById("authSection");
+    const appSection = document.getElementById("appSection");
+    const patientList = document.getElementById("patientList");
+    document.getElementById("apiLabel").textContent = API_BASE;
+
+    function showStatus(message, isError = false) {
+      statusBox.textContent = message;
+      statusBox.className = "status " + (isError ? "err" : "ok");
+    }
+    function clearStatus() {
+      statusBox.textContent = "";
+      statusBox.className = "status";
+    }
+    function token() { return localStorage.getItem(TOKEN_KEY); }
+    function getUser() {
+      try { return JSON.parse(localStorage.getItem(USER_KEY) || "{}"); }
+      catch { return {}; }
+    }
+    function setLoggedIn(data) {
+      // Supports common response shapes: {token, user}, {accessToken, user}, or {token, name}.
+      const jwt = data.token || data.accessToken || data.data?.token;
+      if (!jwt) throw new Error("Login succeeded but no token was found in the response. Check your auth controller response.");
+      localStorage.setItem(TOKEN_KEY, jwt);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user || data.data?.user || { name: data.name || "" }));
+      showApp();
+    }
+    function showApp() {
+      authSection.classList.add("hidden");
+      appSection.classList.remove("hidden");
+      const user = getUser();
+      document.getElementById("welcome").textContent = user.name ? `Signed in as ${user.name}` : "Signed in";
+      loadPatients();
+      loadDoctors();
+      loadMappings();
+    }
+    function showAuth() {
+      authSection.classList.remove("hidden");
+      appSection.classList.add("hidden");
+    }
+
+    async function api(path, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      if (token()) headers.Authorization = `Bearer ${token()}`;
+      let response;
+      try {
+        response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      } catch (err) {
+        throw new Error(`Cannot reach ${API_BASE}. Is your backend running? Also check CORS settings. ${err.message}`);
+      }
+      const text = await response.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; }
+      catch { data = { message: text || response.statusText }; }
+      if (!response.ok) {
+        if (response.status === 401 && token()) {
+          // Do not silently clear token: 401 can also mean an expired/invalid token.
+          throw new Error(data.message || "Unauthorized. Please log in again.");
+        }
+        throw new Error(data.message || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    document.getElementById("registerForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const form = new FormData(event.currentTarget);
+      const payload = Object.fromEntries(form.entries());
+      try {
+        const result = await api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+        showStatus(result.message || "Registration successful. Please log in.");
+        event.currentTarget.reset();
+      } catch (err) { showStatus(err.message, true); }
+    });
+
+    document.getElementById("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try {
+        const result = await api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
+        setLoggedIn(result);
+        showStatus("Login successful.");
+        event.currentTarget.reset();
+      } catch (err) { showStatus(err.message, true); }
+    });
+
+    let editingPatientId = null;
+
+    function resetPatientForm() {
+      editingPatientId = null;
+      document.getElementById("patientForm").reset();
+      document.getElementById("patientFormTitle").textContent = "Add a patient";
+      document.getElementById("patientSubmitBtn").textContent = "Create patient";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+    }
+
+    document.getElementById("cancelEditBtn").addEventListener("click", resetPatientForm);
+
+    document.getElementById("patientForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      values.age = Number(values.age);
+
+      try {
+        const isEditing = editingPatientId !== null;
+        const endpoint = isEditing
+          ? `/api/patients/${encodeURIComponent(editingPatientId)}`
+          : "/api/patients";
+        const result = await api(endpoint, {
+          method: isEditing ? "PUT" : "POST",
+          body: JSON.stringify(values)
+        });
+
+        showStatus(result.message || (isEditing
+          ? "Patient updated successfully."
+          : "Patient created successfully."));
+        resetPatientForm();
+        await loadPatients();
+      } catch (err) {
+        showStatus(err.message, true);
+      }
+    });
+
+    document.getElementById("doctorForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try {
+        const result = await api("/api/doctors", {
+          method: "POST",
+          body: JSON.stringify(values)
+        });
+        showStatus(result.message || "Doctor added successfully.");
+        event.currentTarget.reset();
+        await loadDoctors();
+      } catch (err) {
+        showStatus(err.message, true);
+      }
+    });
+
+    function getDoctorsFromResponse(data) {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data.doctors)) return data.doctors;
+      if (Array.isArray(data.data)) return data.data;
+      if (Array.isArray(data.data?.doctors)) return data.data.doctors;
+      return null;
+    }
+
+    async function loadDoctors() {
+      const doctorList = document.getElementById("doctorList");
+      doctorList.innerHTML = '<p class="muted">Loading doctors...</p>';
+      try {
+        const data = await api("/api/doctors");
+        const doctors = getDoctorsFromResponse(data);
+        if (!doctors) {
+          throw new Error("Unexpected doctors response. Expected an array or { doctors: [...] }. Check doctorController.js.");
+        }
+        const doctorSelect = document.getElementById("mappingDoctor");
+        const selectedDoctor = doctorSelect.value;
+        doctorSelect.innerHTML = '<option value="">Select doctor</option>' + doctors.map(doctor =>
+          `<option value="${escapeText(doctor.id)}">${escapeText(doctor.name)} — ${escapeText(doctor.specialization)} (ID: ${escapeText(doctor.id)})</option>`
+        ).join("");
+        if (doctors.some(doctor => String(doctor.id) === selectedDoctor)) doctorSelect.value = selectedDoctor;
+        if (!doctors.length) {
+          doctorList.innerHTML = '<p class="muted">No doctors found.</p>';
+          return;
+        }
+        doctorList.innerHTML = doctors.map(doctor => `
+          <div class="patient">
+            <div>
+              <strong>${escapeText(doctor.name)}</strong>
+              <small>${escapeText(doctor.specialization)}</small>
+              <small>${escapeText(doctor.email)} · ${escapeText(doctor.phone)}</small>
+              <small>ID: ${escapeText(doctor.id)}</small>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        doctorList.innerHTML = `<p class="muted">${escapeText(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById("refreshDoctorsBtn").addEventListener("click", loadDoctors);
+
+    document.getElementById("mappingForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      values.patientId = Number(values.patientId);
+      values.doctorId = Number(values.doctorId);
+      try {
+        const result = await api("/api/mappings", {
+          method: "POST",
+          body: JSON.stringify(values)
+        });
+        showStatus(result.message || "Doctor assigned to patient successfully.");
+        event.currentTarget.reset();
+        await loadMappings();
+      } catch (err) {
+        showStatus(err.message, true);
+      }
+    });
+
+    function getMappingsFromResponse(data) {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data.mappings)) return data.mappings;
+      if (Array.isArray(data.data)) return data.data;
+      if (Array.isArray(data.data?.mappings)) return data.data.mappings;
+      return null;
+    }
+
+    async function loadMappings() {
+      const mappingList = document.getElementById("mappingList");
+      mappingList.innerHTML = '<p class="muted">Loading assignments...</p>';
+      try {
+        const data = await api("/api/mappings");
+        const mappings = getMappingsFromResponse(data);
+        if (!mappings) {
+          throw new Error("Unexpected mapping response. Expected an array or { mappings: [...] }. Check mappingController.js.");
+        }
+        if (!mappings.length) {
+          mappingList.innerHTML = '<p class="muted">No patient-doctor assignments yet.</p>';
+          return;
+        }
+        mappingList.innerHTML = mappings.map(mapping => {
+          const patient = mapping.patient || mapping.Patient || {};
+          const doctor = mapping.doctor || mapping.Doctor || {};
+          const patientId = mapping.patientId ?? patient.id ?? "—";
+          const doctorId = mapping.doctorId ?? doctor.id ?? "—";
+          return `
+            <div class="patient">
+              <div>
+                <strong>${escapeText(patient.name || `Patient #${patientId}`)} ↔ ${escapeText(doctor.name || `Doctor #${doctorId}`)}</strong>
+                <small>Patient ID: ${escapeText(patientId)} · Doctor ID: ${escapeText(doctorId)}</small>
+                <small>${escapeText(doctor.specialization || "")}</small>
+                <small>Mapping ID: ${escapeText(mapping.id ?? mapping.mappingId ?? "—")}</small>
+              </div>
+              ${(mapping.id ?? mapping.mappingId) != null
+                ? `<button class="danger" type="button" data-delete-mapping-id="${escapeText(mapping.id ?? mapping.mappingId)}">Remove</button>`
+                : ""}
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        mappingList.innerHTML = `<p class="muted">${escapeText(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById("refreshMappingsBtn").addEventListener("click", loadMappings);
+
+    document.getElementById("mappingList").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-delete-mapping-id]");
+      if (!button) return;
+      const id = button.dataset.deleteMappingId;
+      if (!confirm("Remove this doctor assignment?")) return;
+      button.disabled = true;
+      try {
+        const result = await api(`/api/mappings/${encodeURIComponent(id)}`, { method: "DELETE" });
+        showStatus(result.message || "Doctor assignment removed.");
+        await loadMappings();
+      } catch (err) {
+        showStatus(err.message, true);
+        button.disabled = false;
+      }
+    });
+
+    function getPatientsFromResponse(data) {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data.patients)) return data.patients;
+      if (Array.isArray(data.data)) return data.data;
+      if (Array.isArray(data.data?.patients)) return data.data.patients;
+      return null;
+    }
+    function escapeText(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    async function loadPatients() {
+      patientList.innerHTML = '<p class="muted">Loading patients...</p>';
+      try {
+        const data = await api("/api/patients");
+        const patients = getPatientsFromResponse(data);
+        if (!patients) throw new Error("Unexpected patient-list response. Expected an array or { patients: [...] }. Check patientController.js.");
+        document.getElementById("patientCount").textContent = `${patients.length} patient${patients.length === 1 ? "" : "s"}`;
+        const patientSelect = document.getElementById("mappingPatient");
+        const selectedPatient = patientSelect.value;
+        patientSelect.innerHTML = '<option value="">Select patient</option>' + patients.map(patient =>
+          `<option value="${escapeText(patient.id)}">${escapeText(patient.name)} (ID: ${escapeText(patient.id)})</option>`
+        ).join("");
+        if (patients.some(patient => String(patient.id) === selectedPatient)) patientSelect.value = selectedPatient;
+        if (!patients.length) {
+          patientList.innerHTML = '<p class="muted">No patients yet. Add your first patient using the form.</p>';
+          return;
+        }
+        patientList.innerHTML = patients.map(patient => `
+          <div class="patient">
+            <div>
+              <strong>${escapeText(patient.name)}</strong>
+              <small>Age: ${escapeText(patient.age)} · Gender: ${escapeText(patient.gender)}</small>
+              <small>${escapeText(patient.address)}</small>
+              <small>ID: ${escapeText(patient.id)}</small>
+            </div>
+            <div class="row" style="flex:0 0 auto; gap:6px">
+              <button class="secondary" type="button" data-edit-id="${escapeText(patient.id)}">Edit</button>
+              <button class="danger" type="button" data-delete-id="${escapeText(patient.id)}">Delete</button>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        patientList.innerHTML = `<p class="muted">${escapeText(err.message)}</p>`;
+        if (err.message.toLowerCase().includes("unauthorized")) showStatus(err.message, true);
+      }
+    }
+
+    patientList.addEventListener("click", async (event) => {
+      const editButton = event.target.closest("[data-edit-id]");
+      if (editButton) {
+        const id = editButton.dataset.editId;
+        try {
+          // Load the record so the form is populated with current values.
+          const data = await api(`/api/patients/${encodeURIComponent(id)}`);
+          const patient = data.patient || data.data?.patient || data.data || data;
+
+          if (!patient || patient.id === undefined) {
+            throw new Error("Unexpected patient details response. Check GET /api/patients/:id response format.");
+          }
+
+          editingPatientId = patient.id;
+          document.getElementById("patientName").value = patient.name ?? "";
+          document.getElementById("patientAge").value = patient.age ?? "";
+          document.getElementById("patientGender").value = patient.gender ?? "";
+          document.getElementById("patientAddress").value = patient.address ?? "";
+          document.getElementById("patientFormTitle").textContent = `Edit patient #${patient.id}`;
+          document.getElementById("patientSubmitBtn").textContent = "Save changes";
+          document.getElementById("cancelEditBtn").classList.remove("hidden");
+          document.getElementById("patientName").focus();
+          showStatus(`Editing patient ${patient.id}. Update the fields and click Save changes.`);
+        } catch (err) {
+          showStatus(err.message, true);
+        }
+        return;
+      }
+
+      const button = event.target.closest("[data-delete-id]");
+      if (!button) return;
+      const id = button.dataset.deleteId;
+      if (!confirm(`Delete patient ${id}? This cannot be undone.`)) return;
+      button.disabled = true;
+      try {
+        const result = await api(`/api/patients/${encodeURIComponent(id)}`, { method: "DELETE" });
+        showStatus(result.message || "Patient deleted successfully.");
+        if (String(editingPatientId) === String(id)) resetPatientForm();
+        await loadPatients();
+      } catch (err) {
+        showStatus(err.message, true);
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", () => {
+      clearStatus();
+      loadPatients();
+    });
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      showAuth();
+      showStatus("Logged out.");
+    });
+
+    if (token()) showApp();
+    else showAuth();
+  </script>
+</body>
+</html>
