@@ -61,12 +61,9 @@ DB_PASSWORD=your_postgres_password
 # Use a long, random secret of at least 32 characters
 JWT_SECRET=replace_with_a_random_secret_of_at_least_32_characters
 
-# Frontend origin allowed by CORS, if your server uses this variable
+# Frontend origin allowed by CORS
 FRONTEND_URL=http://127.0.0.1:5500
 
-```bash
-npm run db:migrate
-```
 
 ### 5. Start the server
 
